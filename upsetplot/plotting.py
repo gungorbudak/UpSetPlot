@@ -529,7 +529,7 @@ class UpSet:
             for rect in rects:
                 height = rect.get_height()
                 ax.text(rect.get_x() + rect.get_width() * .5,
-                        height + margin, fmt.format(height), rotate=45,
+                        height + margin, fmt.format(height), rotation=45,
                         ha='center', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
