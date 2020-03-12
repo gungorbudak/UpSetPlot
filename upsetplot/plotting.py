@@ -528,9 +528,9 @@ class UpSet:
             margin = 0.01 * abs(np.diff(ax.get_ylim()))
             for rect in rects:
                 height = rect.get_height()
-                ax.text(rect.get_x() + rect.get_width() * .5,
+                ax.text(rect.get_x(),
                         height + margin, fmt.format(height), rotation=45,
-                        ha='center', va='bottom')
+                        ha='left', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
 
