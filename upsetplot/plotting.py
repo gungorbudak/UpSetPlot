@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.tight_layout import get_renderer
+from matplotlib.ticker import ScalarFormatter, FuncFormatter
 
 
 def _aggregate_data(df, subset_size, sum_over):
@@ -503,6 +504,8 @@ class UpSet:
         tick_axis = ax.yaxis
         tick_axis.grid(True)
         ax.set_ylabel('Intersection size')
+        ax.yaxis.set_major_formatter(
+            FuncFormatter(lambda x, p: format(int(x), ',')))
 
     def _label_sizes(self, ax, rects, where):
         if not self._show_counts:
@@ -529,7 +532,7 @@ class UpSet:
             for rect in rects:
                 height = rect.get_height()
                 ax.text(rect.get_x(),
-                        height + margin, fmt.format(height), rotation=45,
+                        height + margin, fmt.format(height), rotation=30,
                         ha='left', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
@@ -538,6 +541,7 @@ class UpSet:
         """Plot bars indicating total set size
         """
         orig_ax = ax
+
         ax = self._reorient(ax)
         rects = ax.barh(np.arange(len(self.totals.index.values)), self.totals,
                         .5, color=self._facecolor, align='center')
@@ -551,6 +555,9 @@ class UpSet:
         ax.yaxis.set_visible(False)
         ax.xaxis.grid(True)
         ax.patch.set_visible(False)
+        ax.set_xlabel('Set size')
+        ax.xaxis.set_major_formatter(
+            FuncFormatter(lambda x, p: format(int(x), ',')))
 
     def plot_shading(self, ax):
         # alternating row shading (XXX: use add_patch(Rectangle)?)
