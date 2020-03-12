@@ -429,7 +429,7 @@ class UpSet:
                                       self._totals_plot_elements),
                       hspace=1)
         if self._horizontal:
-            print(n_cats, n_inters, self._totals_plot_elements)
+            # print(n_cats, n_inters, self._totals_plot_elements)
             out = {'matrix': gridspec[-n_cats:, -n_inters:],
                    'shading': gridspec[-n_cats:, :],
                    'totals': gridspec[-n_cats:, :self._totals_plot_elements],
@@ -507,14 +507,14 @@ class UpSet:
     def _label_sizes(self, ax, rects, where):
         if not self._show_counts:
             return
-        fmt = '%d' if self._show_counts is True else self._show_counts
+        fmt = '{:,d}' if self._show_counts is True else self._show_counts
         if where == 'right':
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
             for rect in rects:
                 width = rect.get_width()
                 ax.text(width + margin,
                         rect.get_y() + rect.get_height() * .5,
-                        fmt % width,
+                        fmt.format(width),
                         ha='left', va='center')
         elif where == 'left':
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
@@ -522,14 +522,14 @@ class UpSet:
                 width = rect.get_width()
                 ax.text(width + margin,
                         rect.get_y() + rect.get_height() * .5,
-                        fmt % width,
+                        fmt.format(width),
                         ha='right', va='center')
         elif where == 'top':
             margin = 0.01 * abs(np.diff(ax.get_ylim()))
             for rect in rects:
                 height = rect.get_height()
                 ax.text(rect.get_x() + rect.get_width() * .5,
-                        height + margin, fmt % height,
+                        height + margin, fmt.format(height), rotate=45,
                         ha='center', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
