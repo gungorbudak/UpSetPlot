@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.tight_layout import get_renderer
-from matplotlib.ticker import ScalarFormatter, FuncFormatter
+from matplotlib.ticker import FuncFormatter
 
 
 def _aggregate_data(df, subset_size, sum_over):
