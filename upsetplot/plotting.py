@@ -1,7 +1,5 @@
 from __future__ import print_function, division, absolute_import
 
-import warnings
-
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -19,7 +17,7 @@ def _aggregate_data(df, subset_size, sum_over):
     aggregated : Series
         aggregates
     """
-    _SUBSET_SIZE_VALUES = ['auto', 'count', 'sum', 'legacy']
+    _SUBSET_SIZE_VALUES = ['auto', 'count', 'sum']
     if subset_size not in _SUBSET_SIZE_VALUES:
         raise ValueError('subset_size should be one of %s. Got %r'
                          % (_SUBSET_SIZE_VALUES, subset_size))
@@ -28,15 +26,9 @@ def _aggregate_data(df, subset_size, sum_over):
         input_name = df.name
         df = pd.DataFrame({'_value': df})
 
-        if not df.index.is_unique:
-            if subset_size == 'legacy':
-                warnings.warn('From version 0.4, passing a Series as data '
-                              'with non-unqiue groups will raise an error '
-                              'unless subset_size="sum" or "count".',
-                              FutureWarning)
-            if subset_size == 'auto':
-                raise ValueError('subset_size="auto" cannot be used for a '
-                                 'Series with non-unique groups.')
+        if subset_size == 'auto' and not df.index.is_unique:
+            raise ValueError('subset_size="auto" cannot be used for a '
+                             'Series with non-unique groups.')
         if sum_over is not None:
             raise ValueError('sum_over is not applicable when the input is a '
                              'Series')
@@ -46,17 +38,8 @@ def _aggregate_data(df, subset_size, sum_over):
             sum_over = '_value'
     else:
         # DataFrame
-        if subset_size == 'legacy' and sum_over is None:
-            raise ValueError('Please specify subset_size or sum_over for a '
-                             'DataFrame.')
-        elif subset_size == 'legacy' and sum_over is False:
-            warnings.warn('sum_over=False will not be supported from version '
-                          '0.4. Use subset_size="auto" or "count" '
-                          'instead.', DeprecationWarning)
-        elif subset_size in ('auto', 'sum') and sum_over is False:
-            # remove this after deprecation
-            raise ValueError('sum_over=False is not supported when '
-                             'subset_size=%r' % subset_size)
+        if sum_over is False:
+            raise ValueError('Unsupported value for sum_over: False')
         elif subset_size == 'auto' and sum_over is None:
             sum_over = False
         elif subset_size == 'count':
@@ -230,11 +213,10 @@ class UpSet:
         in the provided order.
 
         .. versionadded: 0.3
-            Replaces sort_sets_by
     subset_size : {'auto', 'count', 'sum'}
         Configures how to calculate the size of a subset. Choices are:
 
-        'auto'
+        'auto' (default)
             If `data` is a DataFrame, count the number of rows in each group,
             unless `sum_over` is specified.
             If `data` is a Series with at most one row for each group, use
@@ -245,17 +227,10 @@ class UpSet:
         'sum'
             Sum the value of the `data` Series, or the DataFrame field
             specified by `sum_over`.
-
-        Until version 0.4, the default is 'legacy' which uses `sum_over` to
-        control this behaviour. From version 0.4, 'auto' will be default.
     sum_over : str or None
         If `subset_size='sum'` or `'auto'`, then the intersection size is the
         sum of the specified field in the `data` DataFrame. If a Series, only
         None is supported and its value is summed.
-
-        If `subset_size='legacy'`, `sum_over` must be specified when `data` is
-        a DataFrame. If False, the intersection plot will show the count of
-        each subset. Otherwise, it shows the sum of the specified field.
     facecolor : str
         Color for bar charts and dots.
     with_lines : bool
@@ -266,6 +241,9 @@ class UpSet:
     intersection_plot_elements : int
         The intersections plot should be large enough to fit this many matrix
         elements. Set to 0 to disable intersection size bars.
+
+        .. versionchanged: 0.4
+            Setting to 0 is handled.
     totals_plot_elements : int
         The totals plot should be large enough to fit this many matrix
         elements.
@@ -273,20 +251,22 @@ class UpSet:
         Whether to label the intersection size bars with the cardinality
         of the intersection. When a string, this formats the number.
         For example, '%d' is equivalent to True.
-    sort_sets_by
-        .. deprecated: 0.3
-            Replaced by sort_categories_by, this parameter will be removed in
-            version 0.4.
+    show_percentages : bool, default=False
+        Whether to label the intersection size bars with the percentage
+        of the intersection relative to the total dataset.
+        This may be applied with or without show_counts.
+
+        .. versionadded: 0.4
     """
     _default_figsize = (10, 6)
 
     def __init__(self, data, orientation='horizontal', sort_by='degree',
                  sort_categories_by='cardinality',
-                 subset_size='legacy', sum_over=None,
+                 subset_size='auto', sum_over=None,
                  facecolor='black',
                  with_lines=True, element_size=32,
                  intersection_plot_elements=6, totals_plot_elements=2,
-                 show_counts='', sort_sets_by='deprecated'):
+                 show_counts='', show_percentages=False):
 
         self._horizontal = orientation == 'horizontal'
         self._reorient = _identity if self._horizontal else _transpose
@@ -300,11 +280,7 @@ class UpSet:
         if not intersection_plot_elements:
             self._subset_plots.pop()
         self._show_counts = show_counts
-
-        if sort_sets_by != 'deprecated':
-            sort_categories_by = sort_sets_by
-            warnings.warn('sort_sets_by was deprecated in version 0.3 and '
-                          'will be removed in version 0.4', DeprecationWarning)
+        self._show_percentages = show_percentages
 
         (self._df, self.intersections,
          self.totals) = _process_data(data,
@@ -430,7 +406,6 @@ class UpSet:
                                       self._totals_plot_elements),
                       hspace=1)
         if self._horizontal:
-            # print(n_cats, n_inters, self._totals_plot_elements)
             out = {'matrix': gridspec[-n_cats:, -n_inters:],
                    'shading': gridspec[-n_cats:, :],
                    'totals': gridspec[-n_cats:, :self._totals_plot_elements],
@@ -447,8 +422,8 @@ class UpSet:
             cumsizes = np.cumsum(sizes)
             for start, stop, plot in zip(np.hstack([[0], cumsizes]), cumsizes,
                                          self._subset_plots):
-                out[plot['id']] = gridspec[-n_inters:,
-                                           start + n_cats:stop + n_cats]
+                out[plot['id']] = \
+                    gridspec[-n_inters:, start + n_cats:stop + n_cats]
         return out
 
     def plot_matrix(self, ax):
@@ -508,31 +483,62 @@ class UpSet:
             FuncFormatter(lambda x, p: format(int(x), ',')))
 
     def _label_sizes(self, ax, rects, where):
-        if not self._show_counts:
+        if not self._show_counts and not self._show_percentages:
             return
-        fmt = '{:,d}' if self._show_counts is True else self._show_counts
+        if self._show_counts is True:
+            count_fmt = '{:,d}'
+        else:
+            count_fmt = self._show_counts
+        if self._show_percentages is True:
+            pct_fmt = '{:,.1f}%'
+        else:
+            pct_fmt = self._show_percentages
+
+        total = sum(self.totals)
+        if count_fmt and pct_fmt:
+            if where == 'top':
+                fmt = '%s\n(%s)' % (count_fmt, pct_fmt)
+            else:
+                fmt = '%s (%s)' % (count_fmt, pct_fmt)
+
+            def make_args(val):
+                return val, 100 * val / total
+        elif count_fmt:
+            fmt = count_fmt
+
+            def make_args(val):
+                return val,
+        else:
+            fmt = pct_fmt
+
+            def make_args(val):
+                return 100 * val / total,
+
         if where == 'right':
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
             for rect in rects:
                 width = rect.get_width()
                 ax.text(width + margin,
                         rect.get_y() + rect.get_height() * .5,
-                        fmt.format(width),
+                        fmt.format(*make_args(width)),
                         ha='left', va='center')
         elif where == 'left':
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
             for rect in rects:
                 width = rect.get_width()
+                print(width, *make_args(width))
                 ax.text(width + margin,
                         rect.get_y() + rect.get_height() * .5,
-                        fmt.format(width),
+                        fmt.format(*make_args(width)),
                         ha='right', va='center')
         elif where == 'top':
             margin = 0.01 * abs(np.diff(ax.get_ylim()))
             for rect in rects:
                 height = rect.get_height()
-                ax.text(rect.get_x(),
-                        height + margin, fmt.format(height), rotation=90,
+                ax.text(rect.get_x() + rect.get_width() * .5 - 0.2,
+                        height + margin,
+                        fmt.format(*make_args(height)),
+                        rotation=45,
                         ha='left', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
