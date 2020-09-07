@@ -526,7 +526,6 @@ class UpSet:
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
             for rect in rects:
                 width = rect.get_width()
-                print(width, *make_args(width))
                 ax.text(width + margin,
                         rect.get_y() + rect.get_height() * .5,
                         fmt.format(*make_args(width)),
