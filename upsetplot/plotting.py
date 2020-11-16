@@ -90,6 +90,7 @@ def _check_index(df):
 
 def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over):
     df, agg = _aggregate_data(df, subset_size, sum_over)
+    total = agg.sum()
     df = _check_index(df)
 
     totals = [agg[agg.index.get_level_values(name).values.astype(bool)].sum()
@@ -129,8 +130,7 @@ def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over):
     df['_bin'] = pd.Series(df_packed).map(
         pd.Series(np.arange(len(data_packed)),
                   index=data_packed))
-
-    return df, agg, totals
+    return total, df, agg, totals
 
 
 class _Transposed:
