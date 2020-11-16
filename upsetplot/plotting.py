@@ -5,7 +5,7 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.tight_layout import get_renderer
-from matplotlib.ticker import FuncFormatter
+from matplotlib.ticker import FuncFormatter, EngFormatter
 
 
 def _aggregate_data(df, subset_size, sum_over):
@@ -282,7 +282,7 @@ class UpSet:
         self._show_counts = show_counts
         self._show_percentages = show_percentages
 
-        (self._df, self.intersections,
+        (self.total, self._df, self.intersections,
          self.totals) = _process_data(data,
                                       sort_by=sort_by,
                                       sort_categories_by=sort_categories_by,
@@ -479,8 +479,9 @@ class UpSet:
         tick_axis = ax.yaxis
         tick_axis.grid(True)
         ax.set_ylabel('Intersection size')
-        ax.yaxis.set_major_formatter(
-            FuncFormatter(lambda x, p: format(int(x), ',')))
+        # ax.yaxis.set_major_formatter(
+        #     FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.yaxis.set_major_formatter(EngFormatter(sep=''))
 
     def _label_sizes(self, ax, rects, where):
         if not self._show_counts and not self._show_percentages:
@@ -494,7 +495,7 @@ class UpSet:
         else:
             pct_fmt = self._show_percentages
 
-        total = sum(self.totals)
+        # total = sum(self.totals)
         if count_fmt and pct_fmt:
             if where == 'top':
                 fmt = '%s\n(%s)' % (count_fmt, pct_fmt)
@@ -502,7 +503,7 @@ class UpSet:
                 fmt = '%s (%s)' % (count_fmt, pct_fmt)
 
             def make_args(val):
-                return val, 100 * val / total
+                return val, 100 * val / self.total
         elif count_fmt:
             fmt = count_fmt
 
@@ -512,7 +513,7 @@ class UpSet:
             fmt = pct_fmt
 
             def make_args(val):
-                return 100 * val / total,
+                return 100 * val / self.total,
 
         if where == 'right':
             margin = 0.01 * abs(np.diff(ax.get_xlim()))
@@ -523,7 +524,7 @@ class UpSet:
                         fmt.format(*make_args(width)),
                         ha='left', va='center')
         elif where == 'left':
-            margin = 0.01 * abs(np.diff(ax.get_xlim()))
+            margin = 0.05 * abs(np.diff(ax.get_xlim()))
             for rect in rects:
                 width = rect.get_width()
                 ax.text(width + margin,
@@ -549,7 +550,7 @@ class UpSet:
 
         ax = self._reorient(ax)
         rects = ax.barh(np.arange(len(self.totals.index.values)), self.totals,
-                        .5, color=self._facecolor, align='center')
+                        .5, color=self._facecolor, zorder=10, align='center')
         self._label_sizes(ax, rects, 'left' if self._horizontal else 'top')
 
         max_total = self.totals.max()
@@ -561,8 +562,10 @@ class UpSet:
         ax.xaxis.grid(True)
         ax.patch.set_visible(False)
         ax.set_xlabel('Set size')
-        ax.xaxis.set_major_formatter(
-            FuncFormatter(lambda x, p: format(int(x), ',')))
+        # ax.xaxis.set_major_formatter(
+        #     FuncFormatter(lambda x, p: format(int(x), ',')))
+        ax.xaxis.set_major_formatter(EngFormatter(sep=''))
+
 
     def plot_shading(self, ax):
         # alternating row shading (XXX: use add_patch(Rectangle)?)

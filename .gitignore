@@ -13,6 +13,7 @@
 *.pdb
 .project
 .pydevproject
+.vscode
 .settings
 .idea
 .vagrant
