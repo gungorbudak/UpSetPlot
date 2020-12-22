@@ -5,8 +5,8 @@ import pandas as pd
 import matplotlib
 from matplotlib import pyplot as plt
 from matplotlib.tight_layout import get_renderer
-from matplotlib.ticker import FuncFormatter, EngFormatter
-
+from matplotlib.ticker import EngFormatter
+from ballpark import business as B
 
 def _aggregate_data(df, subset_size, sum_over):
     """
@@ -443,7 +443,8 @@ class UpSet:
         else:
             # TODO: make s relative to colw
             s = 200
-        ax.scatter(*self._swapaxes(x, y), c=c.tolist(), linewidth=0, s=s)
+        ax.scatter(*self._swapaxes(x, y), c=c.tolist(), s=s,
+                   edgecolor=c.tolist(), linewidth=2)
 
         if self._with_lines:
             line_data = (pd.Series(y[idx], index=x[idx])
@@ -468,7 +469,8 @@ class UpSet:
         """
         ax = self._reorient(ax)
         rects = ax.bar(np.arange(len(self.intersections)), self.intersections,
-                       .5, color=self._facecolor, zorder=10, align='center')
+                        .5, color=self._facecolor, edgecolor=self._facecolor,
+                        linewidth=2, zorder=10, align='center')
 
         self._label_sizes(ax, rects, 'top' if self._horizontal else 'right')
 
@@ -487,7 +489,7 @@ class UpSet:
         if not self._show_counts and not self._show_percentages:
             return
         if self._show_counts is True:
-            count_fmt = '{:,d}'
+            count_fmt = '{}'
         else:
             count_fmt = self._show_counts
         if self._show_percentages is True:
@@ -508,7 +510,7 @@ class UpSet:
             fmt = count_fmt
 
             def make_args(val):
-                return val,
+                return B(val),
         else:
             fmt = pct_fmt
 
@@ -538,8 +540,7 @@ class UpSet:
                 ax.text(rect.get_x() + rect.get_width() * .5 - 0.2,
                         height + margin,
                         fmt.format(*make_args(height)),
-                        rotation=45,
-                        ha='left', va='bottom')
+                        rotation=30, ha='left', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
 
@@ -550,7 +551,8 @@ class UpSet:
 
         ax = self._reorient(ax)
         rects = ax.barh(np.arange(len(self.totals.index.values)), self.totals,
-                        .5, color=self._facecolor, zorder=10, align='center')
+                        .5, color=self._facecolor, edgecolor=self._facecolor,
+                        linewidth=2, zorder=10, align='center')
         self._label_sizes(ax, rects, 'left' if self._horizontal else 'top')
 
         max_total = self.totals.max()
@@ -561,7 +563,7 @@ class UpSet:
         ax.yaxis.set_visible(False)
         ax.xaxis.grid(True)
         ax.patch.set_visible(False)
-        ax.set_xlabel('Set size')
+        ax.set_xlabel('Total size')
         # ax.xaxis.set_major_formatter(
         #     FuncFormatter(lambda x, p: format(int(x), ',')))
         ax.xaxis.set_major_formatter(EngFormatter(sep=''))
