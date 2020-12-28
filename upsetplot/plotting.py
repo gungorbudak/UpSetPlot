@@ -534,13 +534,13 @@ class UpSet:
                         fmt.format(*make_args(width)),
                         ha='right', va='center')
         elif where == 'top':
-            margin = 0.01 * abs(np.diff(ax.get_ylim()))
+            margin = 0.05 * abs(np.diff(ax.get_ylim()))
             for rect in rects:
                 height = rect.get_height()
-                ax.text(rect.get_x() + rect.get_width() * .5 - 0.2,
+                ax.text(rect.get_x() + rect.get_width() * .5,
                         height + margin,
                         fmt.format(*make_args(height)),
-                        rotation=30, ha='left', va='bottom')
+                        rotation=90, ha='center', va='bottom')
         else:
             raise NotImplementedError('unhandled where: %r' % where)
 
