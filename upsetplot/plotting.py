@@ -534,7 +534,7 @@ class UpSet:
                         fmt.format(*make_args(width)),
                         ha='right', va='center')
         elif where == 'top':
-            margin = 0.05 * abs(np.diff(ax.get_ylim()))
+            margin = 0.02 * abs(np.diff(ax.get_ylim()))
             for rect in rects:
                 height = rect.get_height()
                 ax.text(rect.get_x() + rect.get_width() * .5 - 0.4,
@@ -615,7 +615,8 @@ class UpSet:
         totals_ax = self._reorient(fig.add_subplot)(specs['totals'],
                                                     sharey=matrix_ax)
         self.plot_totals(totals_ax)
-        out = {'matrix': matrix_ax,
+        out = {'gs': specs['gs'],
+               'matrix': matrix_ax,
                'shading': shading_ax,
                'totals': totals_ax}
 
