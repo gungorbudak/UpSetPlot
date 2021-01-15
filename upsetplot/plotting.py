@@ -53,7 +53,7 @@ def _aggregate_data(df, subset_size, sum_over):
                                  'subset_size="sum" and a DataFrame is '
                                  'provided.')
 
-    gb = df.groupby(level=list(range(df.index.nlevels)))
+    gb = df.groupby(level=list(range(df.index.nlevels)), sort=False)
     if sum_over is False:
         aggregated = gb.size()
         aggregated.name = 'size'
@@ -88,7 +88,8 @@ def _check_index(df):
     return df
 
 
-def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over):
+def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over,
+                  subset_by, min_subset_size=0, max_subset_size=np.inf):
     df, agg = _aggregate_data(df, subset_size, sum_over)
     total = agg.sum()
     df = _check_index(df)
@@ -96,6 +97,10 @@ def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over):
     totals = [agg[agg.index.get_level_values(name).values.astype(bool)].sum()
               for name in agg.index.names]
     totals = pd.Series(totals, index=agg.index.names)
+
+    agg = agg[np.logical_and(agg >= min_subset_size, agg <= max_subset_size)]
+    df = df[df.index.isin(agg.index)]
+
     if sort_categories_by == 'cardinality':
         totals.sort_values(ascending=False, inplace=True)
     elif sort_categories_by is not None:
@@ -103,17 +108,22 @@ def _process_data(df, sort_by, sort_categories_by, subset_size, sum_over):
     df = df.reorder_levels(totals.index.values)
     agg = agg.reorder_levels(totals.index.values)
 
-    if sort_by == 'cardinality':
-        agg = agg.sort_values(ascending=False)
-    elif sort_by == 'degree':
-        gb_degree = agg.groupby(sum, group_keys=False)
-        agg = gb_degree.apply(lambda x: x.sort_index(ascending=False))
+    if subset_by is not None:
+        agg = agg.loc[
+            pd.MultiIndex.from_tuples(subset_by, names=agg.index.names)]
+
+    if sort_by is not None:
+        if sort_by == 'cardinality':
+            agg = agg.sort_values(ascending=False)
+        elif sort_by == 'degree':
+            gb_degree = agg.groupby(sum, group_keys=False)
+            agg = gb_degree.apply(lambda x: x.sort_index(ascending=False))
     else:
         raise ValueError('Unknown sort_by: %r' % sort_by)
 
-    min_value = 0
-    max_value = np.inf
-    agg = agg[np.logical_and(agg >= min_value, agg <= max_value)]
+    # min_value = 0
+    # max_value = np.inf
+    # agg = agg[np.logical_and(agg >= min_value, agg <= max_value)]
 
     # add '_bin' to df indicating index in agg
     # XXX: ugly!
@@ -257,6 +267,18 @@ class UpSet:
         This may be applied with or without show_counts.
 
         .. versionadded: 0.4
+    subset_by : list or None, default=None
+        Take subset of intersections before drawing them. The subsets will
+        still be represented in the totals section.
+    min_subset_size : int, default=0
+        Minimum size of a subset to be included in the plot. All subsets with
+        a size smaller than this threshold will be omitted from plotting.
+    max_subset_size : int, default=inf
+        Maximum size of a subset to be included in the plot. All subsets with
+        a size greater than this threshold will be omitted from plotting.
+    text_width_offset : int, default=0
+        Offset to add to the text width determined automatically for the labels
+        in the totals bars
     """
     _default_figsize = (10, 6)
 
@@ -266,7 +288,9 @@ class UpSet:
                  facecolor='black',
                  with_lines=True, element_size=32,
                  intersection_plot_elements=6, totals_plot_elements=2,
-                 show_counts='', show_percentages=False):
+                 show_counts='', show_percentages=False,
+                 subset_by=None, min_subset_size=0, max_subset_size=np.inf,
+                 text_width_offset=0):
 
         self._horizontal = orientation == 'horizontal'
         self._reorient = _identity if self._horizontal else _transpose
@@ -281,13 +305,20 @@ class UpSet:
             self._subset_plots.pop()
         self._show_counts = show_counts
         self._show_percentages = show_percentages
+        self.subset_by = subset_by
+        self.min_subset_size = min_subset_size
+        self.max_subset_size = max_subset_size
+        self.text_width_offset = text_width_offset
 
         (self.total, self._df, self.intersections,
          self.totals) = _process_data(data,
                                       sort_by=sort_by,
                                       sort_categories_by=sort_categories_by,
                                       subset_size=subset_size,
-                                      sum_over=sum_over)
+                                      sum_over=sum_over,
+                                      subset_by=subset_by,
+                                      min_subset_size=min_subset_size,
+                                      max_subset_size=max_subset_size)
         if not self._horizontal:
             self.intersections = self.intersections[::-1]
 
@@ -375,7 +406,7 @@ class UpSet:
         # Determine text size to determine figure size / spacing
         r = get_renderer(fig)
         t = fig.text(0, 0, '\n'.join(self.totals.index.values))
-        textw = t.get_window_extent(renderer=r).width
+        textw = t.get_window_extent(renderer=r).width + self.text_width_offset
         t.remove()
 
         MAGIC_MARGIN = 10  # FIXME
